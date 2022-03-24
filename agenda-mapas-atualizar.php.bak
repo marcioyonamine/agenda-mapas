@@ -74,8 +74,6 @@ if(isset($_POST['importar'])){
 		$id = $ccsp[$i]['id'];	
 		//echo $id."<br />";	
 		
-		$insert = insereEvento($id);
-		/*
 		//verifica se existe o evento na base
 		$evento_mapas = mapasWp($id,"mapas","event");
 		//echo "var_dump mapas";
@@ -95,7 +93,7 @@ if(isset($_POST['importar'])){
 			//var_dump($atualiza);
 			
 		}
-		*/
+		
 
 	}
 	

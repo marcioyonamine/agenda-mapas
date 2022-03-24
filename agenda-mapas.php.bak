@@ -307,7 +307,7 @@ function insereEvento($idMapas, $atualiza = NULL){
 				$descricao = $e[$i]['shortDescription'];	
 			}
 		$name = $e[$i]['name'];
-		$ocor = $$e[$i]['occurrences'][$k]['id'];
+		$ocor = $e[$i]['id'];
 		$start = $e[$i]['occurrences'][$k]['rule']['startsOn']." ".$e[$i]['occurrences'][$k]['rule']['startsAt'];
 		$end = $e[$i]['occurrences'][$k]['rule']['startsOn']." ".$e[$i]['occurrences'][$k]['rule']['endsAt'];
 		$until = $e[$i]['occurrences'][$k]['rule']['until']." 00:00";		
