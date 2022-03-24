@@ -2,10 +2,13 @@
 
 	global $wpdb;
 
-	// carrega as variáveis de configuração
-	$existe = $wpdb->get_results("SELECT * FROM wp_mapas WHERE type IN('url-api','espaco','agente','periodo') ",ARRAY_A);
+	$tabela = $wpdb->prefix."mapas";
 
-	for($i = 0; $i < sizeof($existe); $i++){
+
+	// carrega as variáveis de configuração
+	$existe = $wpdb->get_results("SELECT * FROM $tabela WHERE type IN('url-api','selo') ",ARRAY_A);
+
+	for($i = 0; $i < count($existe); $i++){
 		switch($existe[$i]['type']){
 
 		case 'url-api':
@@ -13,264 +16,71 @@
 			$url_api = $existe[$i]['mapas'];
 		break;
 
-		case 'agente':
-			global $agente;
-			$agente = $existe[$i]['mapas'];
+		case 'selo':
+			global $selo;
+			$selo = $existe[$i]['mapas'];
 		break;
 		
-		case 'espaco':
-			global $espaco;
-			$espaco = $existe[$i]['mapas'];
-		break;
-		
-		case 'periodo':
-			global $periodo;
-			$periodo = $existe[$i]['mapas'];
-		break;
 		}
 	}
 	
-///////////////////// Funcoes	
-function converterObjParaArray($data) { //função que transforma objeto vindo do json em array
-    if (is_object($data)) {
-        $data = get_object_vars($data);
-    }
-    if (is_array($data)) {
-        return array_map(__FUNCTION__, $data);
-    }
-    else {
-        return $data;
-    }
-}
 
-function jsonMapas($get_addr){
-
-$ch = curl_init($get_addr);
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-$page = curl_exec($ch);
-return $page;
-	
-}
-
-function postName($string){
-    $table = array(
-        'Š'=>'S', 'š'=>'s', 'Đ'=>'Dj', 'đ'=>'dj', 'Ž'=>'Z',
-        'ž'=>'z', 'Č'=>'C', 'č'=>'c', 'Ć'=>'C', 'ć'=>'c',
-        'À'=>'A', 'Á'=>'A', 'Â'=>'A', 'Ã'=>'A', 'Ä'=>'A',
-        'Å'=>'A', 'Æ'=>'A', 'Ç'=>'C', 'È'=>'E', 'É'=>'E',
-        'Ê'=>'E', 'Ë'=>'E', 'Ì'=>'I', 'Í'=>'I', 'Î'=>'I',
-        'Ï'=>'I', 'Ñ'=>'N', 'Ò'=>'O', 'Ó'=>'O', 'Ô'=>'O',
-        'Õ'=>'O', 'Ö'=>'O', 'Ø'=>'O', 'Ù'=>'U', 'Ú'=>'U',
-        'Û'=>'U', 'Ü'=>'U', 'Ý'=>'Y', 'Þ'=>'B', 'ß'=>'Ss',
-        'à'=>'a', 'á'=>'a', 'â'=>'a', 'ã'=>'a', 'ä'=>'a',
-        'å'=>'a', 'æ'=>'a', 'ç'=>'c', 'è'=>'e', 'é'=>'e',
-        'ê'=>'e', 'ë'=>'e', 'ì'=>'i', 'í'=>'i', 'î'=>'i',
-        'ï'=>'i', 'ð'=>'o', 'ñ'=>'n', 'ò'=>'o', 'ó'=>'o',
-        'ô'=>'o', 'õ'=>'o', 'ö'=>'o', 'ø'=>'o', 'ù'=>'u',
-        'ú'=>'u', 'û'=>'u', 'ý'=>'y', 'ý'=>'y', 'þ'=>'b',
-        'ÿ'=>'y', 'Ŕ'=>'R', 'ŕ'=>'r',
-    );
-    // Traduz os caracteres em $string, baseado no vetor $table
-    $string = strtr($string, $table);
-    // converte para minúsculo
-    $string = strtolower($string);
-    // remove caracteres indesejáveis (que não estão no padrão)
-    $string = preg_replace("/[^a-z0-9_\s-]/", "", $string);
-    // Remove múltiplas ocorrências de hífens ou espaços
-    $string = preg_replace("/[\s-]+/", " ", $string);
-    // Transforma espaços e underscores em hífens
-    $string = preg_replace("/[\s_]/", "-", $string);
-    // retorna a string
-    return $string;
-}
-
-function verificaEspaco($idEspaco,$url_api,$espaco){
-
-$url_space = "http://$url_api/api/space/getChildrenIds/$espaco";
-$locais = json_decode(jsonMapas($url_space));
-$loc = converterObjParaArray($locais);
-$var_loc = $espaco.",";
-for($k = 0; $k < sizeof($loc); $k++){
-	$var_loc .= $loc[$k].",";
-}
-
-$pos = strpos($var_loc, $idEspaco); 
-return $pos;
-	
-}
-
-function mapasWp($id,$base,$type){
-	global $wpdb;
-	switch($base){
-	case "mapas":
-	$sql = "SELECT * FROM wp_mapas WHERE mapas = '".$id."' AND type = '".$type."'";
-		$ex = $wpdb->get_results($sql,ARRAY_A);
-		return $ex;
-	break;
-	case "wp":
-		$sql = "SELECT * FROM wp_mapas WHERE wp = '".$id."' AND type = '".$type."'";
-		$ex = $wpdb->get_results($sql,ARRAY_A);
-		return $ex;
-	break;
-	}
-
-	
-}
-
-function insereEvento($idMapas){
-	set_time_limit(0);
-	global $wpdb; //carrega a superglobal do WP
-	global $url_api;
-	$data = array(
- 	   '@select' => 'name,project,occurrences,terms,longDescription,shortDescription',
-		'id' => 'eq('.$idMapas.')'
-  	);
-	$get_addr = 'http://'.$url_api.'/api/event/find?'.http_build_query($data);
-	$evento = json_decode(jsonMapas($get_addr));
-	$e =  converterObjParaArray($evento);
-	
-	for($i = 0; $i < sizeof($e); $i++){
-		for($k = 0; $k < count($e[$i]['occurrences']); $k++){
-		$descricao = $e[$i]['longDescription'];
-			if($descricao == ""){
-				$descricao = $e[$i]['shortDescription'];	
-			}
-		$name = $e[$i]['name'];
-
-		$start = $e[$i]['occurrences'][$k]['rule']['startsOn']." ".$e[$i]['occurrences'][$k]['rule']['startsAt'];
-		$end = $e[$i]['occurrences'][$k]['rule']['startsOn']." ".$e[$i]['occurrences'][$k]['rule']['endsAt'];
-		$until = $e[$i]['occurrences'][$k]['rule']['until']." 00:00";		
-		$frequency = $e[$i]['occurrences'][$k]['rule']['frequency'];
-		$espaco = $e[$i]['occurrences'][$k]['space']['name'];
-		
-		$semana = "";
-		for($d = 0; $d <= 7; $d++){
-			if($e[$i]['occurrences'][$k]['rule']['day'][$d] == "on"){
-				//SU,MO,TU,WE,TH,FR,SA
-				switch($d){
-					case 0:
-						$semana = $semana."SU,";
-					break;	
-					case 1:
-						$semana = $semana."MO,";
-					break;	
-					case 2:
-						$semana = $semana."TU,";
-					break;	
-					case 3:
-						$semana = $semana."WE,";
-					break;	
-					case 4:
-						$semana = $semana."TH,";
-					break;	
-					case 5:
-						$semana = $semana."FR,";
-					break;	
-					case 6:
-						$semana = $semana."SA,";
-					break;	
-				}	
-			}
-		}
-		$semana = substr($semana,0,-1);
-		
-		$categoria = ""; //precisa converter para WP
-		for($l = 0; $l < sizeof($e[$i]['terms']['linguagem']); $l++){
-			$converte = mapasWp($e[$i]['terms']['linguagem'][$l],"mapas","linguagem");
-			$categoria = $categoria.$converte[0]['wp'].",";
-		}
-		$categoria = substr($categoria,0,-1);
-		$tags = "";
-		for($t = 0; $t < sizeof($e[$i]['terms']['tag']); $t++){
-			$tags = $tags.$e[$i]['terms']['tag'][$t].",";
-		}
-			$tags = $tags.$e[$i]['project']['name'].",";
-		
-		
-		$tags = substr($tags,0,-1);		
-
-		
-		
-		
-		
-		//construir o event_data
-		$event_data = array(
-			'start'     => new DateTime($start, eo_get_blog_timezone() ),
-			'end'       => new DateTime($end, eo_get_blog_timezone() ),
-			'until'     => new DateTime($until, eo_get_blog_timezone() ),
-			'schedule'  => $frequency,
-			'schedule_meta' =>array($semana)
-	   );
-	
-		//construir o post_data	
-		$post_data = array(
-			'post_title'=>$name,
-			'post_content'=>$descricao,
-			'tax_input'=>array(
-				'event-venue'=>$espaco,
-				'event-category'=>array($categoria),
-				'event-tag' => array($tags)
-			),
-			'post_status'   => 'publish'
-		);
-		
-		$post = eo_insert_event($event_data,$post_data);
-		
-		return $categoria;
-	}
-	}
-}
-
-////////////////////////////Fim das Funcoes
 	
 
 if(isset($_POST['importar'])){
 
 	$hoje = $_POST['dataInicio'];
 	$cem_dias = $_POST['dataFinal'];
-	$url_space = "http://$url_api/api/space/getChildrenIds/$espaco";
-	$locais = json_decode(jsonMapas($url_space));
-	$loc = converterObjParaArray($locais);
-	$var_loc = $espaco.",";
-	for($k = 0; $k < sizeof($loc); $k++){
-		$var_loc .= $loc[$k].",";
+
+	$url = "https://".$url_api."/api/event/findByLocation";
+	//$url = "https://$url_api/api/event/find";
+
+	$sql_espaco = "SELECT mapas FROM ".$wpdb->prefix."mapas WHERE type = 'space'";
+	$esp = $wpdb->get_results($sql_espaco,ARRAY_A);
+	//var_dump($esp);
+	$espacos_virgula = "";
+	for($j = 0 ; $j < count($esp); $j++){
+		$espaco_virgula .= $esp[$j]['mapas'].",";
 	}
-	$url = "http://".$url_api."/api/event/findByLocation";
-	//$url = "http://$url_api/api/event/find";
+
 
 	$data = array(
-		"space"=> "IN(".substr($var_loc,0,-1).")",
+		"space"=> "IN(".substr($espaco_virgula,0,-1).")",
+		//"space"=> "IN(334)",
+
    		"@from" => $hoje,
 		"@to" => $cem_dias,
 		"@select" => "id", 
-		"isVerified" => "EQ(TRUE)"
+		//"isVerified" => "EQ(TRUE)"
 	);
 
 	$get_addr = $url.'?'.http_build_query($data);
 	$evento = json_decode(jsonMapas($get_addr));
 
-	echo "Foram encontrados ".sizeof($evento)." resultados.<br><br>";
+	echo "Foram encontrados ".count($evento)." resultados.<br><br>";
 
-	$ccsp = converterObjParaArray($evento);
+	$ccsp = mapasConverterObjParaArray($evento);
 
 	// Retorna os eventos de hoje (converter a string date para date e fazer a comparação de datas)
 	$hoje = date('Y-m-d');
 	$semana = date('w');
 	$today = date('y-m-d H:i:s');
 	echo "Hoje é $hoje<br>";
-	echo $get_addr;
+	//echo $get_addr;
 	$repeat = 0;
 	
 	
-	for($i = 0; $i < sizeof($ccsp); $i++){
+	for($i = 0; $i < count($ccsp); $i++){
 		$id = $ccsp[$i]['id'];	
-		echo $id."<br />";	
+		//echo $id."<br />";	
 		
 		//verifica se existe o evento na base
 		$evento_mapas = mapasWp($id,"mapas","event");
+		//echo "var_dump mapas";
+		//var_dump($evento_mapas);
 		if($evento_mapas == NULL){
 			$insert = insereEvento($id);
-			$mapas = $wpdb->query("INSERT INTO `wp_mapas` (`id`, `wp`, `mapas`, `type`,`edit` ) VALUES (NULL, '".$insert."', '".$id."', 'event', '1');");
+			$mapas = $wpdb->query("INSERT INTO `".$wpdb->prefix."mapas` (`id`, `wp`, `mapas`, `type`,`edit` ) VALUES (NULL, '".$insert."', '".$id."', 'event', '1');");
 			if($mapas == TRUE){
 				echo $name." inserido com sucesso.<br />";	
 			}else{
@@ -279,7 +89,8 @@ if(isset($_POST['importar'])){
 				
 		}else{
 			echo "Há, somente atualize";
-			
+			$atualiza = insereEvento($id,$evento_mapas[0]['wp']);// $id = id do mapas, $insert = id do wordpress
+			//var_dump($atualiza);
 			
 		}
 		
@@ -289,90 +100,160 @@ if(isset($_POST['importar'])){
 	
 }
 
+/* Atualiza espaços 
+
+tabelas utilizadas: _mapas, __eo_venuemeta e _terms
+
+INSERT INTO `wp_eo_venuemeta` (`meta_id`, `eo_venue_id`, `meta_key`, `meta_value`) VALUES
+(1, 4, '_address', 'Endereço Teste API'), En_Nome_Logradouro, En_Num En_Complemento, En_Bairro, En_Municipio, En_Estado, En_CEP, location
+(2, 4, '_city', 'Cidade Teste API'), En_Municipio
+(3, 4, '_state', 'Estado Teste API'),  En_Estado
+(4, 4, '_postcode', '03404-140'), En_CEP
+(5, 4, '_country', 'País Teste API'),
+(6, 4, '_lat', '-23.539121'),location
+(7, 4, '_lng', '-46.554751'),
+(8, 4, '_description', 'Descrição Local Teste API');
+
+_terms
+term_id 4
+name Local Teste API
+slug local-teste-api
+term_group 0
+
+_mapas
+INSERT INTO `wp_mapas` (`id`, `wp`, `mapas`, `type`, `atualizacao`, `atualizacao_mapas`, `edit`) VALUES (NULL, '', '', '', '', '', '');
+*/
 
 if(isset($_POST['espacos'])){
-
-$url_space = "http://$url_api/api/space/getChildrenIds/$espaco";
-$locais = json_decode(jsonMapas($url_space));
-$loc = converterObjParaArray($locais);
-$var_loc = $espaco.",";
-for($k = 0; $k < sizeof($loc); $k++){
-
-	$url = "http://$url_api/api/space/find/";
+	
+	$url_mapas = "https://".$url_api."/api/";
+	$url_space = $url_mapas."space/find";
 	$data = array(
-		"@select" => "name", 
-		//"@limit" => "10", //tirar depois do teste
-		"id" => "EQ(".$loc[$k].")"
+		"@select" => "id, name,shortDescription,longDescription,updateTimestamp,parent,En_Nome_Logradouro,En_Num, En_Complemento, En_Bairro, En_Municipio, En_Estado, En_CEP, location, terms, seals, createTimestamp",
+		"@seals" => $selo
 		);
-	$get_addr = $url.'?'.http_build_query($data);
-	$espaco_json = json_decode(jsonMapas($get_addr));	
-	$espaco_array = converterObjParaArray($espaco_json);
-	$id_mapas = $loc[$k];
-	$nome_espaco = $espaco_array[0]['name'];
+
+	$loc = mapasChamaAPI($url_space,$data);
+	
+
+for($k = 0; $k < count($loc); $k++){
+
+	$id_mapas = $loc[$k]['id'];
+	$nome_espaco = $loc[$k]['name'];
 	$slug_espaco = postName($nome_espaco);
+	$address = $loc[$k]['En_Nome_Logradouro']." ".$loc[$k]['En_Num']." ".$loc[$k]['En_Bairro']. " ".$loc[$k]['En_Complemento'];
+	$city = $loc[$k]['En_Municipio'];
+	$state = $loc[$k]['En_Estado'];
+	$post_code = $loc[$k]['En_CEP'];
+	$latitude = $loc[$k]['location']['latitude'];
+	$longitude = $loc[$k]['location']['longitude'];
+	$descricao = $loc[$k]['longDescription'];
+	if($loc[$k]['updateTimestamp']['date'] ==  NULL){
+		$date_mapa_update = substr($loc[$k]['createTimestamp']['date'],0,-7);
+	}else{
+		$date_mapa_update = substr($loc[$k]['updateTimestamp']['date'],0,-7);
+		
+	}
 	
 	//verifica se o espaço existe na tabela wp_mapas
-	$ex = $wpdb->get_results("SELECT * FROM wp_mapas WHERE mapas = '$id_mapas' AND type = 'space'",ARRAY_A);
-
+	$ex = $wpdb->get_results("SELECT * FROM ".$wpdb->prefix."mapas WHERE mapas = '$id_mapas' AND type = 'space'",ARRAY_A);
+	
 	if($ex == TRUE){
+		// Verifica se as datas de atualização são iguais
+		if($data_mapa_update != $ex[0]['atualizacao_mapas']){
+	
 		//Atualiza
 		
-		$idterm = $ex[0]['wp'];
-		$query = "UPDATE `wp_terms` SET `name` = '$nome_espaco', `slug` = '$slug_espaco' WHERE `wp_terms`.`term_id` = $idterm";
-		$update = $wpdb->query($query);
-		if($update == TRUE){
-			echo "Espaço <b>$nome_espaco</b> atualizado com sucesso.<br >";	
-		}else{
-			echo "Erro ao atualizar o espaço <b>$nome_espaco.</b><br />";	
-		}
+			$idterm = $ex[0]['wp'];
+			
+			//_terms
+			$query = "UPDATE `".$wpdb->prefix."terms` SET `name` = '$nome_espaco', `slug` = '$slug_espaco' WHERE `wp_terms`.`term_id` = $idterm";
+			$update = $wpdb->query($query);
+			if($update == TRUE){
+				echo "Espaço <b>$nome_espaco</b> atualizado com sucesso.<br >";	
+			}else{
+				echo "Erro ao atualizar o espaço <b>$nome_espaco.</b><br />";	
+			}
+			
+			// eo_venuemeta
+			// as referências
+			$sql_apaga = "DELETE FROM ".$wpdb->prefix."eo_venuemeta WHERE 'eo_venue_id' = '$idterm'";
+			
+			
+			$sql_insere =  "INSERT INTO `wp_eo_venuemeta` (`eo_venue_id`, `meta_key`, `meta_value`) VALUES
+			( $idterm , '_address', '$address'),
+			( $idterm , '_city', '$city'),
+			( $idterm , '_state', '$state'),
+			( $idterm , '_postcode', '$post_code'),
+			( $idterm , '_country', 'Brasil'),
+			( $idterm , '_lat', '$latitude'),
+			( $idterm , '_lng', '$longitude'),
+			( $idterm , '_description', '$descricao')";		
+			
+			
 
-	
+		}
 	}else{
-		//Insere	
+		//Caso não exista, insere	
 		//1 insere na tabela term
 		//2 pega o id da 1 e insere na tabela term_taxonomy event-venue
-		$insert = $wpdb->query("
-			INSERT INTO wp_terms
+		$sql_insere_espaco = "
+			INSERT INTO ".$wpdb->prefix."terms
 			(name, slug, term_group)
 			VALUES
-			('$nome_espaco','$slug_espaco','0')"
-		);
+			('$nome_espaco','$slug_espaco','0')";
+		$insert = $wpdb->query($sql_insere_espaco);
+
 		if($insert == TRUE){
 			$ultimo = $wpdb->insert_id;
-			$tax = $wpdb->query("INSERT INTO `wp_term_taxonomy` (`term_id`, `taxonomy`, `description`) VALUES ('$ultimo', 'event-venue','Espaço');");
+			$tax = $wpdb->query("INSERT INTO `".$wpdb->prefix."term_taxonomy` (`term_id`, `taxonomy`, `description`) VALUES ('$ultimo', 'event-venue','Espaço');");
 			if($tax == TRUE){
 				echo "Taxonomia <b>$nome_espaco</b> inserido com sucesso.<br >";	
 			}else{
-				echo "Erro ao inserir taxonomia <b>$nome_espaco (2)</b><br />";	
+				echo "Erro ao inserir taxonomia <b>$nome_espaco (1)</b><br />";	
 			}			
 			
+			$insert_eo_venuemeta = "INSERT INTO `".$wpdb->prefix."eo_venuemeta` (`eo_venue_id`, `meta_key`, `meta_value`) VALUES
+			( $ultimo , '_address', '$address'),
+			( $ultimo , '_city', '$city'),
+			( $ultimo , '_state', '$state'),
+			( $ultimo , '_postcode', '$post_code'),
+			( $ultimo , '_country', 'Brasil'),
+			( $ultimo , '_lat', '$latitude'),
+			( $ultimo , '_lng', '$longitude'),
+			( $ultimo, '_description', '$descricao')";
 			
-			$mapas = $wpdb->query("INSERT INTO `wp_mapas` (`id`, `wp`, `mapas`, `type`) VALUES (NULL, '$ultimo', '$id_mapas', 'space');");
+			$meta_eo = $wpdb->query($insert_eo_venuemeta);
+			if($meta_eo == TRUE){
+				echo "Meta Tag EO inserido com sucesso.<br >";	
+			}else{
+				echo "Erro ao inserir <b>$nome_espaco (2)</b> $insert_eo_venuemeta<br />";	
+			}
+				
+			
+			
+			
+			$mapas = $wpdb->query("INSERT INTO `".$wpdb->prefix."mapas` (`id`, `wp`, `mapas`, `type`,`atualizacao_mapas`) VALUES (NULL, '$ultimo', '$id_mapas', 'space','$date_mapa_update');");
 			if($mapas == TRUE){
 				echo "Espaço <b>$nome_espaco</b> inserido com sucesso.<br >";	
 			}else{
 				echo "Erro ao inserir <b>$nome_espaco (2)</b><br />";	
 			}
 		}else{
-			echo "Erro ao inserir <b>$nome_espaco (1)</b><br />";	
+			echo "Erro ao inserir <b>$nome_espaco (3)</b> $sql_insere_espaco<br />";	
 			
 		}
 	}
-	
-	/*
-	echo "<pre>";
-	var_dump($espaco_array);
-	echo "</pre>";
-	echo "<br />";
-	*/
+
 }
+
 
 
 
 if(isset($_POST['projetos'])){
 
 // recupera os projetos
-$url = "http://$url_api/api/project/find";
+$url = "https://$url_api/api/project/find";
 $data = array(
 	"owner" => "EQ($agente)",
 	"isVerified" => "EQ(TRUE)",
@@ -410,6 +291,7 @@ $evento = json_decode(jsonMapas($get_addr));
 	
 ?>
 
+
 <h1>Importador/Atualizador de eventos</h1>
 <p><?php if(isset($men)){echo $men;} ?></p>
 <p><?php if(isset($resultado)){echo $resultado;} ?></p>
@@ -445,14 +327,14 @@ a <input type="text" class="calendario" name="dataFinal" size="10" maxlength="10
 <br />
 <ln></ln>
 <h2>Importar/Atualizar espaços</h2>
-
+<p>Serão importados ou atualizados espaços com o selo indicado na seção "Configurações".</p>
 <br />
 <form action="?page=atualizar" method="post">
 <input type="hidden" name="espacos" />
 <p><input type="submit" value='Importar/Atualizar espaços'/></p>
 </form>
 <br />
-<ln></ln>
+<?php //var_dump($existe);	?>
 
 <h2>Importar/Atualizar projetos</h2>
 
@@ -464,7 +346,7 @@ a <input type="text" class="calendario" name="dataFinal" size="10" maxlength="10
 <?php 
 if(isset($_POST['projetos'])){
 
-$url = "http://$url_api/api/project/find";
+$url = "https://$url_api/api/project/find";
 $data = array(
 	"owner" => "EQ($agente)",
 	"isVerified" => "EQ(TRUE)",
@@ -475,9 +357,9 @@ $get_addr = $url."?".http_build_query($data);
 
 $evento = json_decode(jsonMapas($get_addr));
 
-echo "<pre>";
-var_dump($evento);
-echo "</pre>";
+//echo "<pre>";
+//var_dump($evento);
+//echo "</pre>";
 
 }
 	

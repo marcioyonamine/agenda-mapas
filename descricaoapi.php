@@ -9,7 +9,7 @@ $page = curl_exec($ch);
 return $page;
 	
 }
-$get_addr = "http://spcultura.prefeitura.sp.gov.br/api/event/describe";
+$get_addr = "https://culturaz.santoandre.sp.gov.br/api/event/describe";
 
 $evento = json_decode(jsonMapas($get_addr));
 
