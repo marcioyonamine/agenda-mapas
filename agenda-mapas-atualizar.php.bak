@@ -38,9 +38,9 @@ if(isset($_POST['importar'])){
 	$sql_espaco = "SELECT mapas FROM ".$wpdb->prefix."mapas WHERE type = 'space'";
 	$esp = $wpdb->get_results($sql_espaco,ARRAY_A);
 	//var_dump($esp);
-	$espaco_virgula = "";
+	$espacos_virgula = "";
 	for($j = 0 ; $j < count($esp); $j++){
-		$espaco_virgula .= $esp[$j]['mapas'].",";
+		$espacos_virgula .= $esp[$j]['mapas'].",";
 	}
 
 
