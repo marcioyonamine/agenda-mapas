@@ -272,6 +272,10 @@ function mapasWp($id,$base,$type){
 
 
 function insereEvento($idMapas, $atualiza = NULL){
+	
+	
+	
+	
 	set_time_limit(0);
 	global $wpdb; //carrega a superglobal do WP
 	global $url_api;
@@ -284,25 +288,28 @@ function insereEvento($idMapas, $atualiza = NULL){
 	$evento = json_decode(jsonMapas($get_addr));
 	$e =  mapasConverterObjParaArray($evento);
 	
-	//echo "<pre>";
-	//var_dump($e);
-	//echo "</pre>";
+	echo "<pre>";
+	var_dump($e);
+	echo "</pre>";
+
+
+	$evento_mapas = mapasWp($idMapas,"mapas","event");
+
+
 
 	
 	
-	
-	for($i = 0; $i < count($e); $i++){
-		for($k = 0; $k < count($e[$i]['occurrences']); $k++){
+	//eventos dos mapas
+	for($i = 0; $i < count($e); $i++){ // eventos
+		for($k = 0; $k < count($e[$i]['occurrences']); $k++){ // ocorrencias
 		$descricao = $e[$i]['longDescription'];
 			if($descricao == ""){
 				$descricao = $e[$i]['shortDescription'];	
 			}
 		$name = $e[$i]['name'];
-		
-		echo "<pre>";
-		var_dump($e[$i]['occurrences']);
-		echo "</pre>";
-		
+
+		$ocor = $e[$i]['occurrences'][$k]['id'];
+
 		$start = $e[$i]['occurrences'][$k]['rule']['startsOn']." ".$e[$i]['occurrences'][$k]['rule']['startsAt'];
 		$end = $e[$i]['occurrences'][$k]['rule']['startsOn']." ".$e[$i]['occurrences'][$k]['rule']['endsAt'];
 		$until = $e[$i]['occurrences'][$k]['rule']['until']." 00:00";		
@@ -311,7 +318,7 @@ function insereEvento($idMapas, $atualiza = NULL){
 		
 		$semana = "";
 		for($d = 0; $d <= 7; $d++){
-			if($e[$i]['occurrences'][$k]['rule']['day'][$d] == "on"){
+			if(isset($e[$i]['occurrences'][$k]['rule']['day'][$d]) AND $e[$i]['occurrences'][$k]['rule']['day'][$d] == "on"){
 				//SU,MO,TU,WE,TH,FR,SA
 				switch($d){
 					case 0:
@@ -393,49 +400,78 @@ function insereEvento($idMapas, $atualiza = NULL){
 		);
 		
 		
-		if($atualiza == NULL){
+		if($evento_mapas == NULL){
 			$post = eo_insert_event($event_data,$post_data);
-					$getImageFile = $e[$i]["@files:header.header"]["url"];
-		
-		$wp_filetype = wp_check_filetype( $getImageFile, null );
-
-		$attachment_data = array(
+			$query_insere = "INSERT INTO `".$wpdb->prefix."mapas` (`id`, `wp`, `mapas`, `type`,`ocor`,`edit` ) VALUES (NULL, '".$post."', '".$idMapas."', 'event','".$ocor."', '1')";
+			$mapas = $wpdb->query($query_insere);
+			if($mapas == TRUE){
+				echo $name." inserido com sucesso.<br />";	
+			}else{
+				echo "Erro ao inserir o evento $name. $query_insere  (4)<br />";	
+			}
+			
+			
+			$getImageFile = $e[$i]["@files:header.header"]["url"];
+			$wp_filetype = wp_check_filetype( $getImageFile, null );
+			$attachment_data = array(	
 			'post_mime_type' => $wp_filetype['type'],
 			'post_title' => sanitize_file_name( $getImageFile ),
 			'post_content' => '',
 			'post_status' => 'inherit'
+
 		);	
 			
 		//$attach_id = wp_insert_attachment( $attachment_data, $getImageFile, $post );	
 				Generate_Featured_Image( $getImageFile, $post  );
 			
 		}else{
-		
-			echo "Atualiza".$atualiza."<br />";
-			$post = eo_update_event($atualiza, $event_data, $post_data );
-		$getImageFile = $e[$i]["@files:header.header"]["url"];
-		
-		$wp_filetype = wp_check_filetype( $getImageFile, null );
 
-		$attachment_data = array(
-			'post_mime_type' => $wp_filetype['type'],
-			'post_title' => sanitize_file_name( $getImageFile ),
-			'post_content' => '',
-			'post_status' => 'inherit'
-		);	
+			//echo "Atualiza".$atualiza."<br />";
+			$lista_evento_ocorrencia = "SELECT * FROM `".$wpdb->prefix."mapas` WHERE type = 'event' AND ocor ='".$ocor."'";
+				
+			$res = $wpdb->get_results($lista_evento_ocorrencia,ARRAY_A);
 			
-		//$attach_id = wp_insert_attachment( $attachment_data, $getImageFile, $atualiza );	
-		
-		$y = Generate_Featured_Image( $getImageFile, $atualiza  );
+			
+			
+			
+			for($y = 0; $y < count($res); $y++){
+				$id_wp = $res[$y]['wp'];
+				$post = eo_update_event($id_wp, $event_data, $post_data );
+				$getImageFile = $e[$i]["@files:header.header"]["url"];
+				$wp_filetype = wp_check_filetype( $getImageFile, null );
+				echo "<pre>";
+				var_dump($post);
+				echo "</pre>";
+			if($post == TRUE){
+				echo $name." atualizado com sucesso.<br />";	
+			}else{
+				echo "Erro ao atualizar o evento $name. $query_insere  (4)<br />";	
+			}
 
+
+
+				$attachment_data = array(
+					'post_mime_type' => $wp_filetype['type'],
+					'post_title' => sanitize_file_name($getImageFile),
+					'post_content' => '',
+					'post_status' => 'inherit',
+				);	
+				//$attach_id = wp_insert_attachment( $attachment_data, $getImageFile, $atualiza );	
+		
+				$y = Generate_Featured_Image( $getImageFile, $atualiza  );
+	
 		}
+		
 		
 		//echo "url da imagem: ".$getImageFile;
 		//var_dump($y);
-			
+		
+		
 		return $post;
 	}
 	}
+
+}
 }
 
 function Generate_Featured_Image( $image_url, $post_id  ){

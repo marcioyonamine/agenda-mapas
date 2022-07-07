@@ -74,6 +74,8 @@ if(isset($_POST['importar'])){
 		$id = $ccsp[$i]['id'];	
 		//echo $id."<br />";	
 		
+		$insert = insereEvento($id);
+		/*
 		//verifica se existe o evento na base
 		$evento_mapas = mapasWp($id,"mapas","event");
 		//echo "var_dump mapas";
@@ -93,7 +95,7 @@ if(isset($_POST['importar'])){
 			//var_dump($atualiza);
 			
 		}
-		
+		*/
 
 	}
 	
@@ -366,7 +368,14 @@ $evento = json_decode(jsonMapas($get_addr));
 	?>
 
 <h1>Teste Importar com Função EO</h1>
-<?php /*
+<?php 
+
+$evento_mapas = mapasWp(4338,"mapas","event");
+echo '<pre>';
+var_dump($evento_mapas);
+echo '</pre>';
+
+/*
 
     $event_data = array(
 	     'start'     => new DateTime('2016-12-03 15:00', eo_get_blog_timezone() ),
